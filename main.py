@@ -7,7 +7,9 @@ import logging
 import numpy as np
 import torch
 
+from function.visualization import visualize_test_sequences
 from function.utils import save_test_sequences_detections
+
 from function.data_loader import (
     TrainConfig, set_seed, build_loaders,
     train_one_epoch, evaluate,
@@ -33,9 +35,11 @@ def parse_args():
     parser.add_argument("--num_group", type=int, default=256)
     parser.add_argument("--group_size", type=int, default=64)
 
-    # 마지막에 딱 한 번 저장할 detection 설정
+    # 마지막에 딱 한 번 저장할 detection & visualization 설정
     parser.add_argument("--save_detections", action="store_true",
                         help="If set, after training finishes, load best model and export detections once.")
+    parser.add_argument('--save_visualization', action="store_true",
+                        help="If set, after training finishes, load best model and export visualizations.")
 
     return parser.parse_args()
 
@@ -141,6 +145,19 @@ def main():
             )
         else:
             print_log(f"[WARN] Best checkpoint not found: {ckpt_path}", logger)
+            
+    if args.save_visualization:
+        if os.path.isfile(ckpt_path):
+            model.load_state_dict(torch.load(ckpt_path, map_location=device))
+            print_log(f"[POST] Loaded best model from {ckpt_path}", logger)
+
+            vis_root = os.path.join(output_dir, "videos_best")
+            visualize_test_sequences(
+                cfg, model, out_dir=vis_root,
+                fps=12, prob_thresh=0.5,
+                use_search=False, search_angle_deg=60.0, search_radius=6.0,
+                xlim=8.0, ylim=8.0, canvas=(900,900)
+            )
 
 
 if __name__ == "__main__":
